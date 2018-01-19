@@ -6,16 +6,6 @@ import scipy
 import matplotlib.pyplot as plt
 
 
-def di(L,k,s):
-    return 1
-
-def d(L,K,S):
-    res=0
-    for k in range(len(K)):
-        for s in range(len(S)):
-            res+=di(L,k,s);
-    return res
-
 mat = scipy.io.loadmat('res.mat')
 threeData=mat['threeData']
 nbClosedContours=len(threeData[0])
@@ -36,9 +26,6 @@ for i in range(nbLevel,-1,-1): # besoin de résolution supérieure -> commence p
     coeffs[i] = pywt.wavedec(Contour0[:,0], 'db3', level=i+1)
     low=coeffs[i][0]
     high=coeffs[i][1]
-    #print i
-    #print "\n"
-    #print coeffs[i][1]
     zeroPrec=0
     if(i<nbLevel):
         for j in range(len(high)):
@@ -46,7 +33,7 @@ for i in range(nbLevel,-1,-1): # besoin de résolution supérieure -> commence p
                 a=high[zeroPrec:j]
                 zeroPrec=j
                 integral=scipy.integrate.simps(a)
-                points[i].append([j,integral,coeffs[i+1][0][(j+5)/2]]) # abscisse = dans le premier array
+                points[i].append([j,integral,coeffs[i+1][0][(j+5)/2]]) # abscisse (1er coeff)  = équivalent dans le premier array ??
 #    print points[i]
 
 # print "\n"   longueur = (niveauSup+5)/2 pour db3 -> int(w.dec_len)
@@ -90,4 +77,4 @@ for i in range(nbLevel,-1,-1): # besoin de résolution supérieure -> commence p
 # plt.show()
 
 
-#Determinatin des valeurs optimales
+#Determinatin des valeurs optimales -> faut un long set de signatures vraies
