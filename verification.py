@@ -15,6 +15,10 @@ def d(L,K,S):
             res+=di(L,k,s);
     return res
 
+def DissimilarityDegree(I,I1,Threshold):
+    dissDegree=d(Li,I,I1)
+    return(dissDegree<Threshold)
+
 def calculateNumberClosedContours(Ki):
     NCC=1;
     if(NCC<Ki):
@@ -25,12 +29,6 @@ def calculateNumberClosedContours(Ki):
 def compareCOntourLength(I,I1):
     ##
     return True
-
-def DissimilarityDegree(I,I1,Threshold):
-    dissDegree=d(Li,I,I1)
-    return(dissDegree<Threshold)
-
-
 
 # initialisation des données
 # signature à tester
