@@ -1,10 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
+import pydtw
 import pywt
 import scipy.io
 import scipy
 import matplotlib.pyplot as plt
-from verification import di,d,DissimilarityDegree,calculateNumberClosedContours,compareContourLength,calcThreshold,CalcLi,CalcKi,CalcD,CalcL
+from verification import di,DissimilarityDegree,calculateNumberClosedContours,compareContourLength,calcThreshold,CalcLi,CalcKi,CalcD,CalcL,DTWDistance
+import numpy as np
 
 # structure : 9 images -> K closedContours -> 3 signaux
 # pour chaque signal : L levels ->  m tableaux de coeffs par level -> n zero de la transformée -> stocke 3 infos
@@ -23,18 +25,16 @@ def verification(Features,Ki,Li,Ti,numSign,nbImg): #TODO : verifier que c'est co
     # Step 1  Calculate the total number of closed contours in I. If this number is less than K i ( the optimal larger closed contour number for writer i ), then reject I .
     [NCC,Continue]=calculateNumberClosedContours(Features,numSign,Ki) #OK
 
-
     # Step 2  Compare the boundary lengths for each closed contour pair. To speed up the verification process, we use the length of every closed contour as a feature to discard dissimilar reference signatures  before using DTW for verification.
-    res=False
     if(Continue):
         for i in range(nbImg):
             if(i!=numSign and compareContourLength(i,numSign,Features)):
 # Step 3 Calculate the dissimilarity degree d I between I and all the remaining signatures
 # Step 4 Compare d I with a preset dynamic threshold value T i for writer i. If d I v T i , then accept the   signature; otherwise, reject it.
-                dd=DissimilarityDegree(i,numSign,Features,Ti,Li)
-                if(dd):
-                    res=True 
-    return res
+                dd=DissimilarityDegree(i,numSign,Features,Ki,Li)
+                if(dd<Ti):
+                    return True
+    return False
 
 
 def CalcFeatures(threeData10): #TODO : verifier que c'est correct :/
@@ -44,10 +44,8 @@ def CalcFeatures(threeData10): #TODO : verifier que c'est correct :/
     nCC=[-1] * nbImg #nb Closed Contours
     for i in range(nbImg):
         nCC[i]=len(threeData10[i][0][0]) # nb de closed Contours par image, 0 à cause de matlab
-
         # tableau contenant toutes les features
         Features=[[[[[] for l in range(pywt.dwt_max_level(len(threeData10[i][0][0][k][:,j]), pywt.Wavelet('db3'))-1)] for j in range(3) ] for k in range(nCC[i])] for i in range(nbImg)] 
-
         for i in range(nbImg):
             for k in range(nCC[i]):
                 # x,y et tangential angle
@@ -68,42 +66,38 @@ def CalcFeatures(threeData10): #TODO : verifier que c'est correct :/
                         zeroPrec=0
                         if(l<nbLevel):
                             for m in range(len(high)):
-                                if(abs(high[m])<0.001): # verifier ici, et comment avoir res >
+                                if(abs(high[m])<0.001): # verifier ici
                                     a=high[zeroPrec:m]
                                     zeroPrec=m
                                     if(len(a)>0):
                                         integral=scipy.integrate.simps(a)
                                     else:
                                         integral=0
-                                        absCorr=(m+5)/2
-                                        if(absCorr>=len(coeffs[l+1][0])):
-                                            absCorr=len(coeffs[l+1][0])-1
-                                            if(absCorr<0):
-                                                abscCorr=0
-                                                Features[i][k][j][l].append([j,integral,absCorr]) # abscisse (1er coeff)  = équivalent dans le premier array ?? #TODO bonnes abscisses
+                                    absCorr=(m+5)/2
+                                    if(absCorr>=len(coeffs[l+1][0])):
+                                        absCorr=len(coeffs[l+1][0])-1
+                                    if(absCorr<0):
+                                        abscCorr=0
+                                    Features[i][k][j][l].append([j,integral,absCorr]) # abscisse (1er coeff)  = équivalent dans le premier array ?? #TODO bonnes abscisses
     return Features
 
 
-
 # Calcul des features sur les env10 images de la base, dont celle qu'on veut vérifier
+# (l'avant dernière pour 'instant pour simplifier)
 mat = scipy.io.loadmat('res.mat')
 threeData10=mat['threeData10']
 nbImg=len(threeData10)
 Features=CalcFeatures(threeData10)
 
-#détermination des dij et Lij à partir des features
-#TODO
-d=CalcD(Features,nbImg)
-L=CalcL(Features,nbImg)
-
-#Determinatin des valeurs optimales 
-Ki=CalcKi(nbImg,d,L)
-[Li,Ti]=CalcLi(4,nbImg,d,L,Ki) #TODO : 4 pour nbLevel?
+#Determinatin des valeurs optimales
+numSign=nbImg-1 
+Ki=CalcKi(nbImg,numSign,Features)
+[Li,Ti]=CalcLi(4,nbImg,numSign,Ki,Features) #TODO : 4 pour nbLevel?
 
 # verification de la dernière signature
 #for numSign in range(nbImg-1): #TODO : enlever la signature test des calc valeurs opti
 # verification d'une certaine signature
-verif=verification(Features,Ki,Li,Ti,nbImg-1,nbImg)
+verif=verification(Features,Ki,Li,Ti,numSign,nbImg)#nbImg-1 = numTest
 if(verif):
     print "Signature authentique"
 
@@ -161,6 +155,7 @@ else:
 # plt.show()
 # plt.plot(coeffs[4][1]) # lowpass 2* + court
 # plt.show()
+
 
 
 
